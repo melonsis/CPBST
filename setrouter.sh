@@ -1,11 +1,41 @@
-#Author:Melonsis - tch1995@live.com
+#!/bin/ash
+#Author:Melonsis Tan- tch1995@live.com
 #This file including codes written by miao1007.
 #Using GPL agreement. NOT for commercial use. especially TAOBAO.
-
-#Please set your own gateway first. See the method in readme.md.
-GATEWAY="172.18.124.1"
+check_ip() {
+    IP=$1
+    if  echo $IP |grep "^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$"|grep -v "\.0[0-9]\{1,2\}"|grep -v "^0[0-9]\{1,2\}" ||  (echo -e "[\e[1;31m FAILED \e[0m] \c"&&echo "Gateway format error! [ERROR 1]"&& return 1) ; then
+        FIELD1=$(echo $IP|cut -d. -f1)
+        FIELD2=$(echo $IP|cut -d. -f2)
+        FIELD3=$(echo $IP|cut -d. -f3)
+        FIELD4=$(echo $IP|cut -d. -f4)
+        if [ $FIELD1 -le 255 -a $FIELD2 -le 255 -a $FIELD3 -le 255 -a $FIELD4 -le 255 ]; then
+                echo -e "[\e[1;32m OK \e[0m] \c"
+		echo "Gateway $IP seems available. Turn to next stage."
+        else
+            echo -e "[\e[1;31m FAILED \e[0m] \c"
+	    echo "Gateway $IP seems not available! Please check again.[ERROR 2]"
+            exit
+	 fi
+      else
+	exit
+    fi
+}
+defGATEWAY="172.18.124.1"
+GATEWAY=$1;
+clear
+echo "======CQUPT PandoraBox Setting Tools V0.2======"
+if test -z $GATEWAY
+	then
+		echo "NO gateway detected. Using default..."		
+		GATEWAY=$defGATEWAY
+fi
+check_ip $GATEWAY
 
 #set network
+echo -e "[\e[1;32m STAGE1 \e[0m] \c"
+echo "Starting to setting a new port for PPPoE..."
+exit
 uci delete network.wan6
 uci commit network
 
@@ -20,6 +50,8 @@ uci set network.netkeeper.auto='0'
 uci commit network
 
 #set firewall
+echo -e "[\e[1;32m STAGE2 \e[0m] \c"
+echo "Setting firewall..."
 uci set firewall.@zone[1].network='wan netkeeper' 
 uci commit firewall
 /etc/init.d/firewall restart
@@ -32,6 +64,8 @@ sed -i '/proto_run_command/i username=`echo -e "$username"`' /lib/netifd/proto/p
 
 #Setting route to allow you enter CQUPT network(like jwzx)
 #Attention: you need to use "ipconfig -all" in your PC to find out your own gateway first.
+echo -e "[\e[1;32m STAGE3 \e[0m] \c"
+echo "Setting static router table..."
 uci add network route
 uci set network.@route[0]=route
 uci set network.@route[0].interface='wan'
@@ -87,17 +121,15 @@ uci set network.@route[7].interface='wan'
 uci set network.@route[7].target='172.22.0.0'
 uci set network.@route[7].netmask='255.254.0.0'
 uci set network.@route[7].gateway=$GATEWAY
+
+uci add network route
+uci set network.@route[8]=route
+uci set network.@route[8].interface='wan'
+uci set network.@route[8].target='172.20.0.0'
+uci set network.@route[8].netmask='255.255.0.0'
+uci set network.@route[8].gateway=$GATEWAY
+
 uci commit network
 
-#Because of the official website of PandoraBox was closed, this part of scripts will change opkg sources for you.
-#Attention: When you using this part, you must check the version of your Pandorabox first. See readme.md.
-cp /etc/opkg/distfeeds.conf /etc/opkg/distfeeds.conf.bak
-echo > /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_core http://mirrors.moekr.com/pandorabox/17.11/targets/ralink/mt7621/packages' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_base http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/base' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_lafite http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/lafite' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_luci http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/luci' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_mtkdrv http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/mtkdrv' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_newifi http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/newifi' >> /etc/opkg/distfeeds.conf
-echo 'src/gz 17.08_packages http://mirrors.moekr.com/pandorabox/17.11/packages/mipsel_1004kc_dsp/packages' >> /etc/opkg/distfeeds.conf
-opkg update
+clear
+echo "Seems all done. Enjoy your PandoraBox!"
